@@ -1,5 +1,4 @@
-## forTea-backend
-Social network for connoisseurs of Chinese tea
+![image](https://github.com/muxe1/ForTea-backend/assets/41229495/36eb979a-9229-474b-aec5-602ef2a2a0c4)
 
 ## Usage
 Rename the .env-example file to .env and replace the data
