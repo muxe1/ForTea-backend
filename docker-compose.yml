@@ -1,0 +1,74 @@
+version: '3.9'
+
+services:
+  fastapi:
+    build: src/api/
+    container_name: fastapi
+    ports:
+      - 7002:7002
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 7002
+    environment:
+      DATABASE_URL: $DATABASE_URL
+      SECRET_KEY: $SECRET_KEY
+      ALGORITHM: $ALGORITHM
+      AWS_URL: $AWS_URL
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - main
+  
+  postgres:
+    image: postgres:14.8-alpine3.18
+    container_name: postgres
+    environment:
+      POSTGRES_DB: teafor
+      POSTGRES_USER: $PG_USER
+      POSTGRES_EMAIL: $PG_USER_EMAIL
+      POSTGRES_PASSWORD: $PG_PASSWORD
+    volumes:
+      - pg_data:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    restart: unless-stopped
+    networks:
+      - main
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    depends_on:
+      - fastapi
+    ports:
+      - 80:80
+    volumes:
+      - ./src/nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - main
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    depends_on:
+      - postgres
+    ports:
+      - 5555:80
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    environment:
+      PGADMIN_DEFAULT_USER: $PG_USER
+      PGADMIN_DEFAULT_EMAIL: $PG_USER_EMAIL
+      PGADMIN_DEFAULT_PASSWORD: $PG_PASSWORD
+    restart: unless-stopped
+    networks:
+      - main
+
+networks:
+  main:
+    driver: bridge
+
+volumes:
+  pg_data:
+  pgadmin-data:

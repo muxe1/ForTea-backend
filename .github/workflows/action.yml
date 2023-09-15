@@ -1,0 +1,55 @@
+name: Build Docker And push image to GitLab Registry.
+
+on:
+  push:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Log in to GitLab Container Registry
+        run: echo "${{ secrets.GITLAB_REGISTRY_PASSWORD }}" | docker login ${{ secrets.GITLAB_REGISTRY }} -u ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password-stdin
+  
+      - name: Build Docker And push image to GitLab Registry
+        run: |
+            docker build -t ${{ secrets.GITLAB_REGISTRY }}/${{ secrets.GITLAB_REGISTRY_USERNAME }}/teafor_backend:latest src/api
+            docker push ${{ secrets.GITLAB_REGISTRY }}/${{ secrets.GITLAB_REGISTRY_USERNAME }}/teafor_backend:latest
+
+  deploy-to-prod:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        
+      - name: Deploy to remote server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.REMOTE_SERVER_HOST }}
+          username: ${{ secrets.REMOTE_SERVER_USERNAME }}
+          password: ${{ secrets.REMOTE_SERVER_PASSWORD }}
+          port: ${{ secrets.REMOTE_SERVER_PORT }}
+          script: |
+            cd ../home/TeaFor
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d        
+      
+  slack-notification:
+    needs: deploy-to-prod
+    runs-on: ubuntu-latest
+
+    name: Slack Notification
+    steps:
+      - uses: actions/checkout@v2
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_COLOR: ${{ job.status }} 
+          SLACK_FOOTER: Работаем парни
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
